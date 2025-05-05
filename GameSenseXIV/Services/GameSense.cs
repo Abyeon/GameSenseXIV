@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -22,6 +23,7 @@ namespace GameSenseXIV.Services
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
         private Timer heartbeatTimer { get; set; }
+        private DateTime lastClip {  get; set; }
         private Plugin Plugin { get; set; }
 
         public void Dispose()
@@ -41,6 +43,7 @@ namespace GameSenseXIV.Services
             this.GameDisplayName = gameDisplayName;
             this.Developer = developer;
             this.HeartbeatDelay = heartbeatDelay;
+            this.lastClip = DateTime.MinValue;
 
             string filePath;
 
@@ -133,6 +136,13 @@ namespace GameSenseXIV.Services
         /// <param name="key">The key of the autoclip rule to trigger</param>
         public async void Autoclip(string key)
         {
+            // If it's been less than 10 seconds, dont clip.
+            if ((DateTime.Now - lastClip).TotalSeconds < 10)
+            {
+                lastClip = DateTime.Now;
+                return;
+            }
+
             var data = new Dictionary<string, string>
             {
                 { "game", this.Game },
@@ -141,9 +151,10 @@ namespace GameSenseXIV.Services
 
             if (Plugin.Configuration.LogAutoclipsToChat)
             {
-                Plugin.ChatGui.Print($"[GameSense] Autoclipping {key.ToLower()}.");
+                Plugin.ChatGui.Print($"[GameSense] Autoclipping {AutoclipRules.First(x => x.rule_key == key).label}.");
             }
 
+            lastClip = DateTime.Now;
             await Post("autoclip", data);
         }
 
@@ -158,14 +169,15 @@ namespace GameSenseXIV.Services
             // Stringify the data
             using StringContent jsonContent = new(JsonConvert.SerializeObject(data, Formatting.Indented), Encoding.UTF8, "application/json");
             string request = await jsonContent.ReadAsStringAsync();
-            Plugin.Log.Debug(request);
+            Plugin.Log.Verbose(request);
 
             // Send the POST request
             using HttpResponseMessage response = await httpClient.PostAsync(path, jsonContent);
 
             // Await the response
             var jsonResponse = await response.Content.ReadAsStringAsync();
-            Plugin.Log.Debug(jsonResponse);
+            Plugin.Log.Verbose(jsonResponse);
+            //Plugin.Log.Debug(jsonResponse);
 
             // Return the response
             return jsonResponse;

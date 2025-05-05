@@ -11,6 +11,7 @@ using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Game.ClientState.Party;
 
 namespace GameSenseXIV;
 
@@ -25,6 +26,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IPartyList PartyList { get; private set; } = null!;
+    [PluginService] internal static IDutyState DutyState { get; private set; } = null!;
 
     internal static GameSense GSClient { get; private set; } = null!;
 
@@ -42,11 +44,8 @@ public sealed class Plugin : IDalamudPlugin
 
         GSClient = new GameSense(this, "FFXIV", "Final Fantasy XIV Online", "Square Enix", 14000);
 
-        // you might normally want to embed resources and load them from the manifest stream
-        var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this, goatImagePath);
+        MainWindow = new MainWindow(this);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
@@ -57,6 +56,8 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         Framework.Update += OnFrameworkUpdate;
+        DutyState.DutyWiped += OnDutyWipe;
+        DutyState.DutyCompleted += OnDutyComplete;
 
         PluginInterface.UiBuilder.Draw += DrawUI;
 
@@ -68,33 +69,32 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
     }
 
-    private List<uint> deadPlayerIds = new List<uint>(); 
+    private void OnDutyComplete(object? sender, ushort e)
+    {
+        GSClient.Autoclip("duty_complete");
+    }
 
-    // Check if a player died
+    private void OnDutyWipe(object? sender, ushort e)
+    {
+        GSClient.Autoclip("wipe");
+        //throw new NotImplementedException();
+    }
+
+    private bool isPlayerDead = false;
+
+    // Check if the player died
     private void HandlePlayerHealth(IPlayerCharacter character)
     {
-        if (character == null) return;
-
-        if (character.CurrentHp == 0)
+        if (character.CurrentHp == 0 && !isPlayerDead)
         {
             // Player just died
-            if (!deadPlayerIds.Any(x => x == character.DataId))
-            {
-                deadPlayerIds.Add(character.DataId);
+            isPlayerDead = true;
 
-                // Party / alliance wipe
-                if (deadPlayerIds.Count == PartyList.Count)
-                {
-                    GSClient.Autoclip("wipe");
-                } else if (character.DataId == ClientState.LocalPlayer.DataId) // LocalPlayer death
-                {
-                    GSClient.Autoclip("death");
-                }
-            }
-        } else if (deadPlayerIds.Any(x => x == character.DataId))
+            GSClient.Autoclip("death");
+        } else if (character.CurrentHp > 0 && isPlayerDead)
         {
             // Player revived
-            deadPlayerIds.Remove(character.DataId);
+            isPlayerDead = false;
         }
     }
 
@@ -103,16 +103,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (!ClientState.IsLoggedIn || ClientState.LocalPlayer == null) return;
 
-        if (PartyList == null || PartyList.Count == 0)
-        {
-            HandlePlayerHealth(ClientState.LocalPlayer);
-        } else
-        {
-            foreach (IPlayerCharacter character in PartyList)
-            {
-                HandlePlayerHealth(character);
-            }
-        }
+        HandlePlayerHealth(ClientState.LocalPlayer);
     }
 
     public void Dispose()
