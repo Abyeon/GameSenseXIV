@@ -22,6 +22,7 @@ namespace GameSenseXIV.Services
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
         private Timer heartbeatTimer { get; set; }
+        private Plugin Plugin { get; set; }
 
         public void Dispose()
         {
@@ -33,8 +34,9 @@ namespace GameSenseXIV.Services
             heartbeatTimer.Dispose();
         }
 
-        public GameSense(string game, string gameDisplayName, string developer, uint heartbeatDelay = 14000)
+        public GameSense(Plugin plugin, string game, string gameDisplayName, string developer, uint heartbeatDelay = 14000)
         {
+            this.Plugin = plugin;
             this.Game = game;
             this.GameDisplayName = gameDisplayName;
             this.Developer = developer;
@@ -137,7 +139,10 @@ namespace GameSenseXIV.Services
                 { "key", key }
             };
 
-            Plugin.ChatGui.Print($"[GameSense] Autoclipping {key.ToLower()}.");
+            if (Plugin.Configuration.LogAutoclipsToChat)
+            {
+                Plugin.ChatGui.Print($"[GameSense] Autoclipping {key.ToLower()}.");
+            }
 
             await Post("autoclip", data);
         }

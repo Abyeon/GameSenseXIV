@@ -28,7 +28,7 @@ public sealed class Plugin : IDalamudPlugin
 
     internal static GameSense GSClient { get; private set; } = null!;
 
-    private const string CommandName = "/pmycommand";
+    private const string CommandName = "/gamesense";
 
     public Configuration Configuration { get; init; }
 
@@ -40,7 +40,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        GSClient = new GameSense("FFXIV", "Final Fantasy XIV Online", "Square Enix", 14000);
+        GSClient = new GameSense(this, "FFXIV", "Final Fantasy XIV Online", "Square Enix", 14000);
 
         // you might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
@@ -53,7 +53,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "A useful message to display in /xlhelp"
+            HelpMessage = "Opens the gamesense config."
         });
 
         Framework.Update += OnFrameworkUpdate;
@@ -130,8 +130,8 @@ public sealed class Plugin : IDalamudPlugin
     private void OnCommand(string command, string args)
     {
         // in response to the slash command, just toggle the display status of our main ui
-        GSClient.Autoclip("death");
-        ToggleMainUI();
+        //GSClient.Autoclip("death");
+        ToggleConfigUI();
     }
 
     private void DrawUI() => WindowSystem.Draw();
