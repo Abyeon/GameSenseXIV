@@ -2,7 +2,7 @@
     "Author": "Abyeon",
     "Name": "GameSenseXIV",
     "Punchline": "Add support to SteelSeries GameSense!",
-    "Description": "Plugin to add support to SteelSeries GameSense!",
+    "Description": "Only adds autoclipping at the moment.",
     "ApplicableVersion": "any",
     "Tags": [
         "sample",
