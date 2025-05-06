@@ -71,13 +71,18 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnDutyComplete(object? sender, ushort e)
     {
-        GSClient.Autoclip("duty_complete");
+        if (Configuration.ClipClears)
+        {
+            GSClient.Autoclip("duty_complete");
+        }
     }
 
     private void OnDutyWipe(object? sender, ushort e)
     {
-        GSClient.Autoclip("wipe");
-        //throw new NotImplementedException();
+        if (Configuration.ClipWipes)
+        {
+            GSClient.Autoclip("wipe");
+        }
     }
 
     private bool isPlayerDead = false;
@@ -90,7 +95,10 @@ public sealed class Plugin : IDalamudPlugin
             // Player just died
             isPlayerDead = true;
 
-            GSClient.Autoclip("death");
+            if (Configuration.ClipDeaths)
+            {
+                GSClient.Autoclip("death");
+            }
         } else if (character.CurrentHp > 0 && isPlayerDead)
         {
             // Player revived

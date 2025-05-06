@@ -12,7 +12,7 @@ public class ConfigWindow : Window, IDisposable
     // We give this window a constant ID using ###
     // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
     // and the window ID will always be "###XYZ counter window" for ImGui
-    public ConfigWindow(Plugin plugin) : base("A Wonderful Configuration Window###With a constant ID")
+    public ConfigWindow(Plugin plugin) : base("GameSense Config###GameSenseXIV")
     {
         Flags = ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
@@ -36,6 +36,27 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Checkbox("Log Autoclipping to Chat", ref autoclipChat))
         {
             Configuration.LogAutoclipsToChat = autoclipChat;
+            Configuration.Save();
+        }
+
+        bool clipDeaths = Configuration.ClipDeaths;
+        if (ImGui.Checkbox("Autoclip Deaths", ref clipDeaths))
+        {
+            Configuration.ClipDeaths = clipDeaths;
+            Configuration.Save();
+        }
+
+        bool clipWipes = Configuration.ClipWipes;
+        if (ImGui.Checkbox("Autoclip Party Wipes", ref clipWipes))
+        {
+            Configuration.ClipWipes = clipWipes;
+            Configuration.Save();
+        }
+
+        bool clipClears = Configuration.ClipClears;
+        if (ImGui.Checkbox("Autoclip Duty Completion", ref clipClears))
+        {
+            Configuration.ClipClears = clipClears;
             Configuration.Save();
         }
     }
