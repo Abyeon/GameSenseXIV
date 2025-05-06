@@ -30,11 +30,14 @@ public sealed class Plugin : IDalamudPlugin
 
     internal static GameSense GSClient { get; private set; } = null!;
 
-    private const string CommandName = "/gamesense";
-
     public Configuration Configuration { get; init; }
-
     public readonly WindowSystem WindowSystem = new("GameSenseXIV");
+
+    // Events
+    public event EventHandler<uint> OnHealthChanged;
+    public event EventHandler OnDeath;
+
+    private const string CommandName = "/gamesense";
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
@@ -56,8 +59,8 @@ public sealed class Plugin : IDalamudPlugin
         });
 
         Framework.Update += OnFrameworkUpdate;
-        DutyState.DutyWiped += OnDutyWipe;
-        DutyState.DutyCompleted += OnDutyComplete;
+        //DutyState.DutyWiped += OnDutyWipe;
+        //DutyState.DutyCompleted += OnDutyComplete;
 
         PluginInterface.UiBuilder.Draw += DrawUI;
 
@@ -69,40 +72,38 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
     }
 
-    private void OnDutyComplete(object? sender, ushort e)
-    {
-        if (Configuration.ClipClears)
-        {
-            GSClient.Autoclip("duty_complete");
-        }
-    }
+    //private void OnDutyComplete(object? sender, ushort e)
+    //{
+    //    if (Configuration.ClipClears)
+    //    {
+    //        GSClient.Autoclip("duty_complete");
+    //    }
+    //}
 
-    private void OnDutyWipe(object? sender, ushort e)
-    {
-        if (Configuration.ClipWipes)
-        {
-            GSClient.Autoclip("wipe");
-        }
-    }
+    //private void OnDutyWipe(object? sender, ushort e)
+    //{
+    //    if (Configuration.ClipWipes)
+    //    {
+    //        GSClient.Autoclip("wipe");
+    //    }
+    //}
 
-    private bool isPlayerDead = false;
+    private uint lastHP;
+    //private bool isPlayerDead = false;
 
     // Check if the player died
     private void HandlePlayerHealth(IPlayerCharacter character)
     {
-        if (character.CurrentHp == 0 && !isPlayerDead)
+        if (character.CurrentHp != lastHP)
         {
-            // Player just died
-            isPlayerDead = true;
-
-            if (Configuration.ClipDeaths)
+            if (character.CurrentHp == 0)
             {
-                GSClient.Autoclip("death");
+                OnDeath?.Invoke(this, EventArgs.Empty);
             }
-        } else if (character.CurrentHp > 0 && isPlayerDead)
-        {
-            // Player revived
-            isPlayerDead = false;
+
+            OnHealthChanged?.Invoke(this, character.CurrentHp);
+
+            lastHP = character.CurrentHp;
         }
     }
 

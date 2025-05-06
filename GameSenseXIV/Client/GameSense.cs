@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GameSenseXIV.Client.Rules;
 using Newtonsoft.Json;
 
 namespace GameSenseXIV.Services
@@ -18,7 +19,8 @@ namespace GameSenseXIV.Services
         string Developer { get; init; }
         uint HeartbeatDelay { get; init; }
 
-        public List<AutoclipRule> AutoclipRules = new List<AutoclipRule>();
+        //public List<AutoclipRule> AutoclipRules = new List<AutoclipRule>();
+        internal List<IAutoClipRule> AutoClipRules = new List<IAutoClipRule>();
 
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
@@ -34,6 +36,11 @@ namespace GameSenseXIV.Services
             }
 
             heartbeatTimer.Dispose();
+
+            foreach (var rule in AutoClipRules)
+            {
+                rule.Dispose();
+            }
         }
 
         public GameSense(Plugin plugin, string game, string gameDisplayName, string developer, uint heartbeatDelay = 14000)
@@ -81,9 +88,16 @@ namespace GameSenseXIV.Services
                     RegisterGame();
 
                     // Add Autoclip rules
-                    AutoclipRules.Add(new AutoclipRule("death", "Player death", true));
-                    AutoclipRules.Add(new AutoclipRule("wipe", "Party wipe", true));
-                    AutoclipRules.Add(new AutoclipRule("duty_complete", "Duty Completion", true));
+                    //AutoclipRules.Add(new AutoclipRule("death", "Player death", true));
+                    //AutoclipRules.Add(new AutoclipRule("wipe", "Party wipe", true));
+                    //AutoclipRules.Add(new AutoclipRule("duty_complete", "Duty Completion", true));
+
+                    AutoClipRules = new List<IAutoClipRule>
+                    {
+                        new PlayerDeath(this.Plugin),
+                        new PartyWipe(this.Plugin),
+                        new DutyComplete(this.Plugin)
+                    };
 
                     // Register them
                     RegisterAutoclip();
@@ -123,9 +137,16 @@ namespace GameSenseXIV.Services
         /// </summary>
         public async void RegisterAutoclip()
         {
+            List<AutoclipRule> clipRules = new List<AutoclipRule>();
+            foreach (IAutoClipRule rule in AutoClipRules)
+            {
+                clipRules.Add(new AutoclipRule(rule.RuleKey, rule.Label, rule.Enabled));
+                rule.SubscribeToEvents();
+            }
+
             var data = new {
                 game = this.Game,
-                rules = this.AutoclipRules.ToArray()
+                rules = clipRules.ToArray()
             };
             await Post("register_autoclip_rules", data);
         }
@@ -134,7 +155,7 @@ namespace GameSenseXIV.Services
         /// Triggers an Autoclip event
         /// </summary>
         /// <param name="key">The key of the autoclip rule to trigger</param>
-        public async void Autoclip(string key)
+        internal async void Autoclip(IAutoClipRule rule)
         {
             // If it's been less than 10 seconds, dont clip.
             if ((DateTime.Now - lastClip).TotalSeconds < 10)
@@ -146,12 +167,12 @@ namespace GameSenseXIV.Services
             var data = new Dictionary<string, string>
             {
                 { "game", this.Game },
-                { "key", key }
+                { "key", rule.RuleKey }
             };
 
             if (Plugin.Configuration.LogAutoclipsToChat)
             {
-                Plugin.ChatGui.Print($"[GameSense] Autoclipping {AutoclipRules.First(x => x.rule_key == key).label}.");
+                Plugin.ChatGui.Print($"[GameSense] Autoclipping {rule.Label}.");
             }
 
             lastClip = DateTime.Now;
