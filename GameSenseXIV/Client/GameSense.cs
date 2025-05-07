@@ -9,8 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameSenseXIV.Client;
 using GameSenseXIV.Client.Events;
-using GameSenseXIV.Client.Rules;
-using GameSenseXIV.Client.TimelineEvents;
 using Newtonsoft.Json;
 
 namespace GameSenseXIV.Services
@@ -22,9 +20,9 @@ namespace GameSenseXIV.Services
         string Developer { get; init; }
         uint HeartbeatDelay { get; init; }
 
-        internal List<IAutoClipRule> AutoClipRules = new List<IAutoClipRule>();
+        //internal List<IAutoClipEvent> AutoClipRules = new List<IAutoClipEvent>();
         internal List<IGameEvent> GameEvents = new List<IGameEvent>();
-        internal List<ITimelineEvent> TimelineEvents = new List<ITimelineEvent>();
+        //internal List<ITimelineEvent> TimelineEvents = new List<ITimelineEvent>();
 
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
@@ -41,11 +39,11 @@ namespace GameSenseXIV.Services
 
             heartbeatTimer.Dispose();
 
-            foreach (var rule in AutoClipRules)
-            {
-                rule.UnsubscribeFromEvents();
-                rule.Dispose();
-            }
+            //foreach (var rule in AutoClipRules)
+            //{
+            //    rule.UnsubscribeFromEvents();
+            //    rule.Dispose();
+            //}
 
             foreach (IGameEvent gameEvent in GameEvents)
             {
@@ -98,33 +96,44 @@ namespace GameSenseXIV.Services
                     // Register game
                     RegisterGame();
 
-                    // Add Autoclip rules
-                    AutoClipRules = new List<IAutoClipRule>
-                    {
-                        new PlayerDeath(this.Plugin),
-                        new PartyWipe(this.Plugin),
-                        new DutyComplete(this.Plugin)
-                    };
+                    //// Add Autoclip rules
+                    //AutoClipRules = new List<IAutoClipEvent>
+                    //{
+                    //    new PlayerDeath(this.Plugin),
+                    //    new PartyWipe(this.Plugin),
+                    //    new DutyComplete(this.Plugin)
+                    //};
+
+                    //// Add Game Events
+                    //GameEvents = new List<IGameEvent>
+                    //{
+                    //    new Health(this.Plugin),
+                    //    new Death(this.Plugin),
+                    //    new Clear(this.Plugin)
+                    //};
+
+                    //// Add Timeline Events
+                    //TimelineEvents = new List<ITimelineEvent>
+                    //{
+                    //    new TimelineDeath(),
+                    //    new TimelineClear()
+                    //};
+
+                    // Register them
+                    //RegisterAutoclips();
+                    //RegisterGameEvents();
+                    //RegisterTimelineEvents();
 
                     // Add Game Events
                     GameEvents = new List<IGameEvent>
                     {
-                        new Health(this.Plugin),
-                        new Death(this.Plugin),
-                        new Clear(this.Plugin)
+                        new Clear(Plugin),
+                        new Death(Plugin),
+                        new Health(Plugin),
+                        new Wipe(Plugin)
                     };
 
-                    // Add Timeline Events
-                    TimelineEvents = new List<ITimelineEvent>
-                    {
-                        new TimelineDeath(),
-                        new TimelineClear()
-                    };
-
-                    // Register them
-                    RegisterAutoclips();
                     RegisterGameEvents();
-                    RegisterTimelineEvents();
                 } else
                 {
                     throw new FileNotFoundException("Unable to get coreProps. Is SteelSeries GG installed?");
@@ -159,24 +168,46 @@ namespace GameSenseXIV.Services
         public async void RegisterAutoclips()
         {
             List<AutoclipRule> clipRules = new List<AutoclipRule>();
-            foreach (IAutoClipRule rule in AutoClipRules)
+            foreach (IGameEvent gameEvent in GameEvents)
             {
-                clipRules.Add(new AutoclipRule(rule.RuleKey, rule.Label, rule.Enabled));
-                rule.Setup();
+                if (gameEvent is IAutoClipEvent rule)
+                {
+                    clipRules.Add(new AutoclipRule(rule.Name, rule.Label, rule.Enabled));
+                }
             }
 
-            var data = new {
+            var data = new
+            {
                 game = this.Game,
                 rules = clipRules.ToArray()
             };
             await Post("register_autoclip_rules", data);
         }
 
-        private async void RegisterGameEvents()
+        internal async void RegisterGameEvents()
         {
+            List<AutoclipRule> clipRules = new List<AutoclipRule>();
+            List<object> timelineList = new List<object>();
+
             foreach (IGameEvent gameEvent in GameEvents)
             {
+                gameEvent.UnsubscribeFromEvents();
                 gameEvent.SubscribeToEvents();
+
+                if (gameEvent is IAutoClipEvent rule)
+                {
+                    clipRules.Add(new AutoclipRule(rule.Name, rule.Label, rule.Enabled));
+                }
+
+                if (gameEvent is ITimelineEvent tlEvent)
+                {
+                    timelineList.Add(new
+                    {
+                        @event = tlEvent.Name,
+                        icon_id = tlEvent.TimelineIconId,
+                        previewable = tlEvent.Previewable
+                    });
+                }
 
                 var data = new
                 {
@@ -190,36 +221,52 @@ namespace GameSenseXIV.Services
 
                 await Post("register_game_event", data);
             }
-        }
 
-        private async void RegisterTimelineEvents()
-        {
-            List<object> eventList = new List<object>();
-
-            foreach (ITimelineEvent timelineEvent in TimelineEvents)
-            {
-                eventList.Add(new
-                {
-                    @event = timelineEvent.Name,
-                    icon_id = timelineEvent.IconID,
-                    previewable = timelineEvent.Previewable
-                });
-            }
-
-            var data = new
+            var clipData = new
             {
                 game = this.Game,
-                events = eventList.ToArray()
+                rules = clipRules.ToArray()
             };
 
-            await Post("register_timeline_events", data);
+            await Post("register_autoclip_rules", clipData);
+
+            var timelineData = new
+            {
+                game = this.Game,
+                events = timelineList.ToArray()
+            };
+
+            await Post("register_timeline_events", timelineData);
         }
+
+        //private async void RegisterTimelineEvents()
+        //{
+        //    List<object> eventList = new List<object>();
+
+        //    foreach (ITimelineEvent timelineEvent in TimelineEvents)
+        //    {
+        //        eventList.Add(new
+        //        {
+        //            @event = timelineEvent.Name,
+        //            icon_id = timelineEvent.IconID,
+        //            previewable = timelineEvent.Previewable
+        //        });
+        //    }
+
+        //    var data = new
+        //    {
+        //        game = this.Game,
+        //        events = eventList.ToArray()
+        //    };
+
+        //    await Post("register_timeline_events", data);
+        //}
 
         /// <summary>
         /// Triggers an Autoclip event
         /// </summary>
         /// <param name="key">The autoclip rule to trigger</param>
-        internal async void Autoclip(IAutoClipRule rule)
+        internal async void Autoclip(IAutoClipEvent rule)
         {
             // If it's been less than 10 seconds, dont clip.
             if ((DateTime.Now - lastClip).TotalSeconds < 10)
@@ -231,7 +278,7 @@ namespace GameSenseXIV.Services
             var data = new Dictionary<string, string>
             {
                 { "game", this.Game },
-                { "key", rule.RuleKey }
+                { "key", rule.Name }
             };
 
             if (Plugin.Configuration.LogAutoclipsToChat)

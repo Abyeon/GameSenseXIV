@@ -5,13 +5,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GameSenseXIV.Client.Rules
+namespace GameSenseXIV.Client.Events
 {
-    internal class PartyWipe : IAutoClipRule
+    internal class Wipe : IAutoClipEvent
     {
-        public string RuleKey => "wipe";
-        public string Label => "Party wipe";
+        public string Name => "WIPE";
+        public string Label => "Party Wipe";
         public string Description => "Triggers when the party wipes.";
+        public int MinValue => 0;
+        public int MaxValue => 100;
+        public int IconId => (int)Icons.EventIcon.Flash;
+        public string TimelineIconId => "HEADSHOT";
+        public int Previewable => 1;
+        public bool ValueOptional => true;
         public bool Enabled
         {
             get { return Plugin.Configuration.ClipWipes; }
@@ -20,7 +26,7 @@ namespace GameSenseXIV.Client.Rules
 
         private Plugin Plugin { get; set; }
 
-        public PartyWipe(Plugin plugin)
+        public Wipe(Plugin plugin)
         {
             this.Plugin = plugin;
         }
@@ -39,7 +45,12 @@ namespace GameSenseXIV.Client.Rules
 
         private void OnDutyWipe(object? sender, ushort e)
         {
-            Plugin.GSClient.Autoclip(this);
+            Plugin.GSClient.SendGameEvent(this);
+
+            if (Enabled)
+            {
+                Plugin.GSClient.Autoclip(this);
+            }
         }
     }
 }

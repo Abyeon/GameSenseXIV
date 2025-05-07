@@ -12,6 +12,8 @@ namespace GameSenseXIV.Client
         /// Limited to uppercase A-Z, 0-9, hyphen, and underscore characters.
         /// </summary>
         string Name { get; }
+        string Label { get; }
+        string Description { get; }
         int MinValue { get; }
         int MaxValue { get; }
         int IconId { get; }

@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using GameSenseXIV.Client;
 using GameSenseXIV.Services;
 using ImGuiNET;
 
@@ -43,19 +44,22 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.TextUnformatted("Autoclip Rules: ");
 
-        foreach (IAutoClipRule rule in Plugin.GSClient.AutoClipRules)
+        foreach (IGameEvent gameEvent in Plugin.GSClient.GameEvents)
         {
-            bool enabled = rule.Enabled;
-            if (ImGui.Checkbox(rule.Label, ref enabled))
+            if (gameEvent is IAutoClipEvent rule)
             {
-                rule.Toggle();
-                Plugin.GSClient.RegisterAutoclips();
-                Configuration.Save();
-            }
+                bool enabled = rule.Enabled;
+                if (ImGui.Checkbox(rule.Label, ref enabled))
+                {
+                    rule.Toggle();
+                    Plugin.GSClient.RegisterAutoclips();
+                    Configuration.Save();
+                }
 
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            {
-                ImGui.SetTooltip(rule.Description);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip(rule.Description);
+                }
             }
         }
     }

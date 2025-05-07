@@ -10,6 +10,8 @@ namespace GameSenseXIV.Client.Events
     internal class Health : IGameEvent
     {
         public string Name => "HEALTH";
+        public string Label => "Health";
+        public string Description => "Triggers whenever the player's health changes.";
         public int MinValue => 0;
         public int MaxValue => 100;
         public int IconId => (int)Icons.EventIcon.Health;
