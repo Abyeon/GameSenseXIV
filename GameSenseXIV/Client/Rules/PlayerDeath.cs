@@ -12,7 +12,11 @@ namespace GameSenseXIV.Client.Rules
         public string RuleKey => "death";
         public string Label => "Player death";
         public string Description => "Triggers when the local player dies.";
-        public bool Enabled => true;
+        public bool Enabled
+        {
+            get { return Plugin.Configuration.ClipDeaths; }
+            set { Plugin.Configuration.ClipDeaths = value; }
+        }
 
         private Plugin Plugin { get; set; }
 
@@ -21,14 +25,16 @@ namespace GameSenseXIV.Client.Rules
             this.Plugin = plugin;
         }
 
-        public void Dispose()
-        {
-            Plugin.OnDeath -= OnDeath;
-        }
+        public void Dispose() { }
 
         public void SubscribeToEvents()
         {
             Plugin.OnDeath += OnDeath;
+        }
+
+        public void UnsubscribeFromEvents()
+        {
+            Plugin.OnDeath -= OnDeath;
         }
 
         private void OnDeath(object? sender, EventArgs e)

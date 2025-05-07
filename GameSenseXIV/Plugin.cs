@@ -39,7 +39,6 @@ public sealed class Plugin : IDalamudPlugin
 
     private const string CommandName = "/gamesense";
     private ConfigWindow ConfigWindow { get; init; }
-    private MainWindow MainWindow { get; init; }
 
     public Plugin()
     {
@@ -48,10 +47,8 @@ public sealed class Plugin : IDalamudPlugin
         GSClient = new GameSense(this, "FFXIV", "Final Fantasy XIV Online", "Square Enix", 14000);
 
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this);
 
         WindowSystem.AddWindow(ConfigWindow);
-        WindowSystem.AddWindow(MainWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
@@ -67,9 +64,6 @@ public sealed class Plugin : IDalamudPlugin
         // This adds a button to the plugin installer entry of this plugin which allows
         // to toggle the display status of the configuration ui
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
-
-        // Adds another button that is doing the same but for the main ui of the plugin
-        PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
     }
 
     //private void OnDutyComplete(object? sender, ushort e)
@@ -122,7 +116,6 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.RemoveAllWindows();
 
         ConfigWindow.Dispose();
-        MainWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
     }
@@ -137,5 +130,4 @@ public sealed class Plugin : IDalamudPlugin
     private void DrawUI() => WindowSystem.Draw();
 
     public void ToggleConfigUI() => ConfigWindow.Toggle();
-    public void ToggleMainUI() => MainWindow.Toggle();
 }

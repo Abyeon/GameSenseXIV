@@ -12,7 +12,11 @@ namespace GameSenseXIV.Client.Rules
         public string RuleKey => "wipe";
         public string Label => "Party wipe";
         public string Description => "Triggers when the party wipes.";
-        public bool Enabled => true;
+        public bool Enabled
+        {
+            get { return Plugin.Configuration.ClipWipes; }
+            set { Plugin.Configuration.ClipWipes = value; }
+        }
 
         private Plugin Plugin { get; set; }
 
@@ -21,14 +25,16 @@ namespace GameSenseXIV.Client.Rules
             this.Plugin = plugin;
         }
 
-        public void Dispose()
-        {
-            Plugin.DutyState.DutyWiped -= OnDutyWipe;
-        }
+        public void Dispose() { }
 
         public void SubscribeToEvents()
         {
             Plugin.DutyState.DutyWiped += OnDutyWipe;
+        }
+
+        public void UnsubscribeFromEvents()
+        {
+            Plugin.DutyState.DutyWiped -= OnDutyWipe;
         }
 
         private void OnDutyWipe(object? sender, ushort e)

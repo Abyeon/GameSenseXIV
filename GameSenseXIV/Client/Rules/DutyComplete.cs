@@ -12,7 +12,11 @@ namespace GameSenseXIV.Client.Rules
         public string RuleKey => "duty_complete";
         public string Label => "Duty Completion";
         public string Description => "Triggers when you complete a duty.";
-        public bool Enabled => true;
+        public bool Enabled
+        {
+            get { return Plugin.Configuration.ClipClears; }
+            set { Plugin.Configuration.ClipClears = value; }
+        }
 
         private Plugin Plugin { get; set; }
 
@@ -21,14 +25,16 @@ namespace GameSenseXIV.Client.Rules
             this.Plugin = plugin;
         }
 
-        public void Dispose()
-        {
-            Plugin.DutyState.DutyCompleted -= OnDutyCompleted;
-        }
+        public void Dispose() { }
 
         public void SubscribeToEvents()
         {
             Plugin.DutyState.DutyCompleted += OnDutyCompleted;
+        }
+
+        public void UnsubscribeFromEvents()
+        {
+            Plugin.DutyState.DutyCompleted -= OnDutyCompleted;
         }
 
         private void OnDutyCompleted(object? sender, ushort e)

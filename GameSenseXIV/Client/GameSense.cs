@@ -39,6 +39,7 @@ namespace GameSenseXIV.Services
 
             foreach (var rule in AutoClipRules)
             {
+                rule.UnsubscribeFromEvents();
                 rule.Dispose();
             }
         }
@@ -141,7 +142,7 @@ namespace GameSenseXIV.Services
             foreach (IAutoClipRule rule in AutoClipRules)
             {
                 clipRules.Add(new AutoclipRule(rule.RuleKey, rule.Label, rule.Enabled));
-                rule.SubscribeToEvents();
+                rule.Setup();
             }
 
             var data = new {
@@ -198,7 +199,6 @@ namespace GameSenseXIV.Services
             // Await the response
             var jsonResponse = await response.Content.ReadAsStringAsync();
             Plugin.Log.Verbose(jsonResponse);
-            //Plugin.Log.Debug(jsonResponse);
 
             // Return the response
             return jsonResponse;

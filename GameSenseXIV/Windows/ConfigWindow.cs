@@ -1,6 +1,8 @@
 using System;
 using System.Numerics;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using GameSenseXIV.Services;
 using ImGuiNET;
 
 namespace GameSenseXIV.Windows;
@@ -39,25 +41,22 @@ public class ConfigWindow : Window, IDisposable
             Configuration.Save();
         }
 
-        bool clipDeaths = Configuration.ClipDeaths;
-        if (ImGui.Checkbox("Autoclip Deaths", ref clipDeaths))
-        {
-            Configuration.ClipDeaths = clipDeaths;
-            Configuration.Save();
-        }
+        ImGui.TextUnformatted("Autoclip Rules: ");
 
-        bool clipWipes = Configuration.ClipWipes;
-        if (ImGui.Checkbox("Autoclip Party Wipes", ref clipWipes))
+        foreach (IAutoClipRule rule in Plugin.GSClient.AutoClipRules)
         {
-            Configuration.ClipWipes = clipWipes;
-            Configuration.Save();
-        }
+            bool enabled = rule.Enabled;
+            if (ImGui.Checkbox(rule.Label, ref enabled))
+            {
+                rule.Toggle();
+                Plugin.GSClient.RegisterAutoclip();
+                Configuration.Save();
+            }
 
-        bool clipClears = Configuration.ClipClears;
-        if (ImGui.Checkbox("Autoclip Duty Completion", ref clipClears))
-        {
-            Configuration.ClipClears = clipClears;
-            Configuration.Save();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip(rule.Description);
+            }
         }
     }
 }
