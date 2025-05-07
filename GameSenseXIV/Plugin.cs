@@ -103,10 +103,8 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
     }
 
-    private void OnCommand(string command, string args)
+    private async void OnCommand(string command, string args)
     {
-        // in response to the slash command, just toggle the display status of our main ui
-        //GSClient.Autoclip("death");
         ToggleConfigUI();
     }
 

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using GameSenseXIV.Client;
 using GameSenseXIV.Client.Events;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GameSenseXIV.Services
 {
@@ -38,12 +39,6 @@ namespace GameSenseXIV.Services
             }
 
             heartbeatTimer.Dispose();
-
-            //foreach (var rule in AutoClipRules)
-            //{
-            //    rule.UnsubscribeFromEvents();
-            //    rule.Dispose();
-            //}
 
             foreach (IGameEvent gameEvent in GameEvents)
             {
@@ -95,34 +90,6 @@ namespace GameSenseXIV.Services
 
                     // Register game
                     RegisterGame();
-
-                    //// Add Autoclip rules
-                    //AutoClipRules = new List<IAutoClipEvent>
-                    //{
-                    //    new PlayerDeath(this.Plugin),
-                    //    new PartyWipe(this.Plugin),
-                    //    new DutyComplete(this.Plugin)
-                    //};
-
-                    //// Add Game Events
-                    //GameEvents = new List<IGameEvent>
-                    //{
-                    //    new Health(this.Plugin),
-                    //    new Death(this.Plugin),
-                    //    new Clear(this.Plugin)
-                    //};
-
-                    //// Add Timeline Events
-                    //TimelineEvents = new List<ITimelineEvent>
-                    //{
-                    //    new TimelineDeath(),
-                    //    new TimelineClear()
-                    //};
-
-                    // Register them
-                    //RegisterAutoclips();
-                    //RegisterGameEvents();
-                    //RegisterTimelineEvents();
 
                     // Add Game Events
                     GameEvents = new List<IGameEvent>
@@ -239,29 +206,6 @@ namespace GameSenseXIV.Services
             await Post("register_timeline_events", timelineData);
         }
 
-        //private async void RegisterTimelineEvents()
-        //{
-        //    List<object> eventList = new List<object>();
-
-        //    foreach (ITimelineEvent timelineEvent in TimelineEvents)
-        //    {
-        //        eventList.Add(new
-        //        {
-        //            @event = timelineEvent.Name,
-        //            icon_id = timelineEvent.IconID,
-        //            previewable = timelineEvent.Previewable
-        //        });
-        //    }
-
-        //    var data = new
-        //    {
-        //        game = this.Game,
-        //        events = eventList.ToArray()
-        //    };
-
-        //    await Post("register_timeline_events", data);
-        //}
-
         /// <summary>
         /// Triggers an Autoclip event
         /// </summary>
@@ -334,12 +278,27 @@ namespace GameSenseXIV.Services
 
             // Send the POST request
             using HttpResponseMessage response = await httpClient.PostAsync(path, jsonContent);
-
-            // Await the response
             var jsonResponse = await response.Content.ReadAsStringAsync();
+
+            // Handle possible errors
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                dynamic json = JValue.Parse(jsonResponse);
+                string error = json.error;
+
+                Plugin.ChatGui.PrintError($"[GameSense] Error, please check /xllog");
+
+                if (error != null && error != String.Empty)
+                {
+                    Plugin.Log.Error($"Error sending data to path /\"{path}\":\n{request}");
+                    Plugin.Log.Error(error);
+                }
+            }
+
+            // Print the response
             Plugin.Log.Verbose(jsonResponse);
 
-            // Return the response
+            // Return it
             return jsonResponse;
         }
 
