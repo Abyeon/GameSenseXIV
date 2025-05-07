@@ -49,7 +49,7 @@ public class ConfigWindow : Window, IDisposable
             if (ImGui.Checkbox(rule.Label, ref enabled))
             {
                 rule.Toggle();
-                Plugin.GSClient.RegisterAutoclip();
+                Plugin.GSClient.RegisterAutoclips();
                 Configuration.Save();
             }
 

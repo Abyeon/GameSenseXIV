@@ -66,26 +66,9 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
     }
 
-    //private void OnDutyComplete(object? sender, ushort e)
-    //{
-    //    if (Configuration.ClipClears)
-    //    {
-    //        GSClient.Autoclip("duty_complete");
-    //    }
-    //}
-
-    //private void OnDutyWipe(object? sender, ushort e)
-    //{
-    //    if (Configuration.ClipWipes)
-    //    {
-    //        GSClient.Autoclip("wipe");
-    //    }
-    //}
-
     private uint lastHP;
-    //private bool isPlayerDead = false;
 
-    // Check if the player died
+    // Handle the player health updating
     private void HandlePlayerHealth(IPlayerCharacter character)
     {
         if (character.CurrentHp != lastHP)
@@ -95,7 +78,7 @@ public sealed class Plugin : IDalamudPlugin
                 OnDeath?.Invoke(this, EventArgs.Empty);
             }
 
-            OnHealthChanged?.Invoke(this, character.CurrentHp);
+            OnHealthChanged?.Invoke(character, character.CurrentHp);
 
             lastHP = character.CurrentHp;
         }

@@ -7,7 +7,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GameSenseXIV.Client;
+using GameSenseXIV.Client.Events;
 using GameSenseXIV.Client.Rules;
+using GameSenseXIV.Client.TimelineEvents;
 using Newtonsoft.Json;
 
 namespace GameSenseXIV.Services
@@ -19,8 +22,9 @@ namespace GameSenseXIV.Services
         string Developer { get; init; }
         uint HeartbeatDelay { get; init; }
 
-        //public List<AutoclipRule> AutoclipRules = new List<AutoclipRule>();
         internal List<IAutoClipRule> AutoClipRules = new List<IAutoClipRule>();
+        internal List<IGameEvent> GameEvents = new List<IGameEvent>();
+        internal List<ITimelineEvent> TimelineEvents = new List<ITimelineEvent>();
 
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
@@ -41,6 +45,12 @@ namespace GameSenseXIV.Services
             {
                 rule.UnsubscribeFromEvents();
                 rule.Dispose();
+            }
+
+            foreach (IGameEvent gameEvent in GameEvents)
+            {
+                gameEvent.UnsubscribeFromEvents();
+                gameEvent.Dispose();
             }
         }
 
@@ -89,10 +99,6 @@ namespace GameSenseXIV.Services
                     RegisterGame();
 
                     // Add Autoclip rules
-                    //AutoclipRules.Add(new AutoclipRule("death", "Player death", true));
-                    //AutoclipRules.Add(new AutoclipRule("wipe", "Party wipe", true));
-                    //AutoclipRules.Add(new AutoclipRule("duty_complete", "Duty Completion", true));
-
                     AutoClipRules = new List<IAutoClipRule>
                     {
                         new PlayerDeath(this.Plugin),
@@ -100,8 +106,25 @@ namespace GameSenseXIV.Services
                         new DutyComplete(this.Plugin)
                     };
 
+                    // Add Game Events
+                    GameEvents = new List<IGameEvent>
+                    {
+                        new Health(this.Plugin),
+                        new Death(this.Plugin),
+                        new Clear(this.Plugin)
+                    };
+
+                    // Add Timeline Events
+                    TimelineEvents = new List<ITimelineEvent>
+                    {
+                        new TimelineDeath(),
+                        new TimelineClear()
+                    };
+
                     // Register them
-                    RegisterAutoclip();
+                    RegisterAutoclips();
+                    RegisterGameEvents();
+                    RegisterTimelineEvents();
                 } else
                 {
                     throw new FileNotFoundException("Unable to get coreProps. Is SteelSeries GG installed?");
@@ -133,10 +156,7 @@ namespace GameSenseXIV.Services
             await Post("game_heartbeat", data);
         }
 
-        /// <summary>
-        /// Register Autoclip Events
-        /// </summary>
-        public async void RegisterAutoclip()
+        public async void RegisterAutoclips()
         {
             List<AutoclipRule> clipRules = new List<AutoclipRule>();
             foreach (IAutoClipRule rule in AutoClipRules)
@@ -152,10 +172,53 @@ namespace GameSenseXIV.Services
             await Post("register_autoclip_rules", data);
         }
 
+        private async void RegisterGameEvents()
+        {
+            foreach (IGameEvent gameEvent in GameEvents)
+            {
+                gameEvent.SubscribeToEvents();
+
+                var data = new
+                {
+                    game = this.Game,
+                    @event = gameEvent.Name,
+                    min_value = gameEvent.MinValue,
+                    max_value = gameEvent.MaxValue,
+                    icon_id = gameEvent.IconId,
+                    value_optional = gameEvent.ValueOptional
+                };
+
+                await Post("register_game_event", data);
+            }
+        }
+
+        private async void RegisterTimelineEvents()
+        {
+            List<object> eventList = new List<object>();
+
+            foreach (ITimelineEvent timelineEvent in TimelineEvents)
+            {
+                eventList.Add(new
+                {
+                    @event = timelineEvent.Name,
+                    icon_id = timelineEvent.IconID,
+                    previewable = timelineEvent.Previewable
+                });
+            }
+
+            var data = new
+            {
+                game = this.Game,
+                events = eventList.ToArray()
+            };
+
+            await Post("register_timeline_events", data);
+        }
+
         /// <summary>
         /// Triggers an Autoclip event
         /// </summary>
-        /// <param name="key">The key of the autoclip rule to trigger</param>
+        /// <param name="key">The autoclip rule to trigger</param>
         internal async void Autoclip(IAutoClipRule rule)
         {
             // If it's been less than 10 seconds, dont clip.
@@ -178,6 +241,35 @@ namespace GameSenseXIV.Services
 
             lastClip = DateTime.Now;
             await Post("autoclip", data);
+        }
+
+        /// <summary>
+        /// Trigger a game event for GameSense
+        /// </summary>
+        internal async void SendGameEvent(IGameEvent gameEvent, int eventValue)
+        {
+            var data = new
+            {
+                game = this.Game,
+                @event = gameEvent.Name,
+                data = new {
+                    value = eventValue
+                }
+            };
+
+            await Post("game_event", data);
+        }
+
+        internal async void SendGameEvent(IGameEvent gameEvent)
+        {
+            var data = new
+            {
+                game = this.Game,
+                @event = gameEvent.Name,
+                data = new {}
+            };
+
+            await Post("game_event", data);
         }
 
         /// <summary>
@@ -218,11 +310,6 @@ namespace GameSenseXIV.Services
                 this.label = ruleLabel;
                 this.enabled = enabled;
             }
-        }
-
-        public class TimelineEvent
-        {
-
         }
 
         private class CoreProps
