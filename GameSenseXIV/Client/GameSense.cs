@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -11,6 +10,7 @@ using GameSenseXIV.Client;
 using GameSenseXIV.Client.Events;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static GameSenseXIV.Client.Wrappers;
 
 namespace GameSenseXIV.Services
 {
@@ -21,9 +21,7 @@ namespace GameSenseXIV.Services
         string Developer { get; init; }
         uint HeartbeatDelay { get; init; }
 
-        //internal List<IAutoClipEvent> AutoClipRules = new List<IAutoClipEvent>();
         internal List<IGameEvent> GameEvents = new List<IGameEvent>();
-        //internal List<ITimelineEvent> TimelineEvents = new List<ITimelineEvent>();
 
         private Uri Address { get; init; }
         private HttpClient httpClient { get; set; }
@@ -80,7 +78,6 @@ namespace GameSenseXIV.Services
                 {
                     Plugin.Log.Debug("Found SteelSeries address: " + props.address);
                     this.Address = new Uri($"http://{props.address}");
-                    Plugin.Log.Debug(this.Address.ToString());
 
                     // Initiate the Http client
                     httpClient = new HttpClient()
@@ -110,12 +107,7 @@ namespace GameSenseXIV.Services
 
         public async void RegisterGame()
         {
-            var data = new Dictionary<string, string>
-            {
-                { "game", this.Game },
-                { "game_display_name", this.GameDisplayName },
-                { "developer", this.Developer }
-            };
+            var data = new GameMetadata(this.Game, this.GameDisplayName, this.Developer);
 
             await Post("game_metadata", data);
 
@@ -176,17 +168,15 @@ namespace GameSenseXIV.Services
                     });
                 }
 
-                var data = new
-                {
-                    game = this.Game,
-                    @event = gameEvent.Name,
-                    min_value = gameEvent.MinValue,
-                    max_value = gameEvent.MaxValue,
-                    icon_id = gameEvent.IconId,
-                    value_optional = gameEvent.ValueOptional
-                };
+                var data = new RegisteredGameEvent(this.Game, gameEvent.Name, gameEvent.MinValue, gameEvent.MaxValue, gameEvent.IconId, gameEvent.ValueOptional, gameEvent.Handlers);
 
-                await Post("register_game_event", data);
+                if (data.Handlers == null)
+                {
+                    await Post("register_game_event", data);
+                } else
+                {
+                    await Post("bind_game_event", data);
+                }
             }
 
             var clipData = new
@@ -219,10 +209,10 @@ namespace GameSenseXIV.Services
                 return;
             }
 
-            var data = new Dictionary<string, string>
+            var data = new
             {
-                { "game", this.Game },
-                { "key", rule.Name }
+                game = this.Game,
+                key = rule.Name
             };
 
             if (Plugin.Configuration.LogAutoclipsToChat)
@@ -237,6 +227,18 @@ namespace GameSenseXIV.Services
         /// <summary>
         /// Trigger a game event for GameSense
         /// </summary>
+        internal async void SendGameEvent(IGameEvent gameEvent)
+        {
+            var data = new
+            {
+                game = this.Game,
+                @event = gameEvent.Name,
+                data = new { }
+            };
+
+            await Post("game_event", data);
+        }
+
         internal async void SendGameEvent(IGameEvent gameEvent, int eventValue)
         {
             var data = new
@@ -251,13 +253,13 @@ namespace GameSenseXIV.Services
             await Post("game_event", data);
         }
 
-        internal async void SendGameEvent(IGameEvent gameEvent)
+        internal async void SendGameEvent(IGameEvent gameEvent, object eventData)
         {
             var data = new
             {
                 game = this.Game,
                 @event = gameEvent.Name,
-                data = new {}
+                data = eventData
             };
 
             await Post("game_event", data);
@@ -271,52 +273,56 @@ namespace GameSenseXIV.Services
         /// <returns></returns>
         public async Task<string> Post(string path, object data)
         {
-            // Stringify the data
-            using StringContent jsonContent = new(JsonConvert.SerializeObject(data, Formatting.Indented), Encoding.UTF8, "application/json");
-            string request = await jsonContent.ReadAsStringAsync();
-            Plugin.Log.Verbose(request);
-
-            // Send the POST request
-            using HttpResponseMessage response = await httpClient.PostAsync(path, jsonContent);
-            var jsonResponse = await response.Content.ReadAsStringAsync();
-
-            // Handle possible errors
-            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+            try
             {
-                dynamic json = JValue.Parse(jsonResponse);
-                string error = json.error;
-
-                Plugin.ChatGui.PrintError($"[GameSense] Error, please check /xllog");
-
-                if (error != null && error != String.Empty)
+                // Create settings
+                JsonSerializerSettings settings = new JsonSerializerSettings
                 {
-                    Plugin.Log.Error($"Error sending data to path /\"{path}\":\n{request}");
-                    Plugin.Log.Error(error);
+                    DefaultValueHandling = DefaultValueHandling.Ignore,
+                    NullValueHandling = NullValueHandling.Ignore
+                };
+
+                // Stringify the data
+                using StringContent jsonContent = new(JsonConvert.SerializeObject(data, Formatting.Indented), Encoding.UTF8, "application/json");
+                string request = await jsonContent.ReadAsStringAsync();
+                Plugin.Log.Verbose(request);
+
+                // Send the POST request
+                using HttpResponseMessage response = await httpClient.PostAsync(path, jsonContent);
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                // Handle possible errors
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    dynamic json = JValue.Parse(jsonResponse);
+                    string error = json.error;
+
+                    Plugin.ChatGui.PrintError($"[GameSense] Error, please check /xllog");
+
+                    if (error != null && error != String.Empty)
+                    {
+                        Plugin.Log.Error($"Error sending data to path /\"{path}\":\n{request}");
+                        Plugin.Log.Error(error);
+                    }
                 }
+
+                // Print the response
+                Plugin.Log.Verbose(jsonResponse);
+
+                // Return it
+                return jsonResponse;
+            } catch (Exception ex)
+            {
+                Plugin.ChatGui.PrintError("[GameSense] Fatal error, please check /xllog." +
+                    "\nYou may need to restart the plugin for it to work again.");
+
+                Plugin.Log.Error($"Error: {ex.Message}\n{ex.ToString()}");
+
+                return ex.Message;
             }
-
-            // Print the response
-            Plugin.Log.Verbose(jsonResponse);
-
-            // Return it
-            return jsonResponse;
         }
 
         // -------- Wrapper classes --------
-
-        public class AutoclipRule
-        {
-            public string rule_key { get; init; }
-            public string label { get; init; }
-            public bool enabled { get; set; }
-
-            public AutoclipRule(string ruleKey, string ruleLabel, bool enabled = true)
-            {
-                this.rule_key = ruleKey;
-                this.label = ruleLabel;
-                this.enabled = enabled;
-            }
-        }
 
         private class CoreProps
         {

@@ -35,6 +35,14 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
+        if (ImGui.Button("Remove Game"))
+        {
+            Plugin.GSClient.Post("remove_game", new
+            {
+                game = "FFXIV"
+            });
+        }
+
         bool autoclipChat = Configuration.LogAutoclipsToChat;
         if (ImGui.Checkbox("Log Autoclipping to Chat", ref autoclipChat))
         {

@@ -18,6 +18,7 @@ namespace GameSenseXIV.Client
         int MaxValue { get; }
         int IconId { get; }
         bool ValueOptional { get; }
+        object[]? Handlers => null;
 
         /// <summary>
         /// Subscribe to any events
