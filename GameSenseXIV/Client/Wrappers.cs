@@ -82,6 +82,37 @@ namespace GameSenseXIV.Client
             }
         }
 
+        public class Line
+        {
+            [JsonProperty("has-text")]
+            public bool HasText;
+
+            [JsonProperty("context-frame-key")]
+            public string ContextFrameKey;
+
+            [JsonProperty("bold", NullValueHandling = NullValueHandling.Ignore)]
+            public bool? Bold;
+
+            [JsonProperty("has-progress-bar", NullValueHandling = NullValueHandling.Ignore)]
+            public bool? HasProgressBar;
+
+            [JsonProperty("prefix", NullValueHandling = NullValueHandling.Ignore)]
+            public string? Prefix;
+
+            [JsonProperty("suffix", NullValueHandling = NullValueHandling.Ignore)]
+            public string? Suffix;
+
+            public Line(bool hasText, string contextFrameKey, bool? bold, bool? hasProgressBar, string? prefix = null, string? suffix = null)
+            {
+                HasText = hasText;
+                ContextFrameKey = contextFrameKey;
+                Bold = bold;
+                HasProgressBar = hasProgressBar;
+                Prefix = prefix;
+                Suffix = suffix;
+            }
+        }
+
         public class RegisteredGameEvent
         {
             [JsonProperty("game")]

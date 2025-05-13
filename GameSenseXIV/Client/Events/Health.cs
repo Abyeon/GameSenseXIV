@@ -47,37 +47,6 @@ namespace GameSenseXIV.Client.Events
 
         public void Dispose() { }
 
-        private class Line
-        {
-            [JsonProperty("has-text")]
-            public bool HasText;
-
-            [JsonProperty("context-frame-key")]
-            public string ContextFrameKey;
-
-            [JsonProperty("bold", NullValueHandling = NullValueHandling.Ignore)]
-            public bool? Bold;
-
-            [JsonProperty("has-progress-bar", NullValueHandling = NullValueHandling.Ignore)]
-            public bool? HasProgressBar;
-
-            [JsonProperty("prefix", NullValueHandling = NullValueHandling.Ignore)]
-            public string? Prefix;
-
-            [JsonProperty("suffix", NullValueHandling = NullValueHandling.Ignore)]
-            public string? Suffix;
-
-            public Line(bool hasText, string contextFrameKey, bool? bold, bool? hasProgressBar, string? prefix = null, string? suffix = null)
-            {
-                HasText = hasText;
-                ContextFrameKey = contextFrameKey;
-                Bold = bold;
-                HasProgressBar = hasProgressBar;
-                Prefix = prefix;
-                Suffix = suffix;
-            }
-        }
-
         public void SubscribeToEvents()
         {
             Plugin.OnHealthChanged += OnHealthChanged;
@@ -97,12 +66,9 @@ namespace GameSenseXIV.Client.Events
             IPlayerCharacter character = (IPlayerCharacter)sender;
             float maxHp = (float)character.MaxHp;
 
+            // Convert to 0-100 range
             float unFloored = (float)currentHP / maxHp * 100f;
             int converted = (int)unFloored;
-
-            // Convert to 0-100 range
-
-            Plugin.Log.Debug($"Current HP: {currentHP}, MaxHP: {character.MaxHp}, Converted: {converted}, Unfloored: {unFloored}");
 
             if (lastHPChange != converted)
             {

@@ -202,8 +202,11 @@ namespace GameSenseXIV.Services
         /// <param name="key">The autoclip rule to trigger</param>
         internal async void Autoclip(IAutoClipEvent rule)
         {
-            // If it's been less than 10 seconds, dont clip.
-            if ((DateTime.Now - lastClip).TotalSeconds < 10)
+            // If it has been less than 10 seconds, dont clip.
+            int minutes = Plugin.Configuration.DelayMinutes;
+            int seconds = Plugin.Configuration.DelaySeconds;
+
+            if ((DateTime.Now - lastClip).TotalSeconds < ((60 * minutes) + seconds))
             {
                 lastClip = DateTime.Now;
                 return;

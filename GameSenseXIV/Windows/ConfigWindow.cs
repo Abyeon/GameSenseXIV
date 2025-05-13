@@ -35,19 +35,33 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        if (ImGui.Button("Remove Game"))
-        {
-            Plugin.GSClient.Post("remove_game", new
-            {
-                game = "FFXIV"
-            });
-        }
+        //if (ImGui.Button("Remove Game"))
+        //{
+        //    Plugin.GSClient.Post("remove_game", new
+        //    {
+        //        game = "FFXIV"
+        //    });
+        //}
 
-        bool autoclipChat = Configuration.LogAutoclipsToChat;
-        if (ImGui.Checkbox("Log Autoclipping to Chat", ref autoclipChat))
+        ImGui.TextUnformatted("Delay till next clip:");
+
+        using (ImRaii.ItemWidth(25f))
         {
-            Configuration.LogAutoclipsToChat = autoclipChat;
-            Configuration.Save();
+            int delayMinutes = Configuration.DelayMinutes;
+            if (ImGui.DragInt("minutes", ref delayMinutes, 0.1f, 0, 5))
+            {
+                Configuration.DelayMinutes = delayMinutes;
+                Configuration.Save();
+            }
+
+            ImGui.SameLine();
+
+            int delaySeconds = Configuration.DelaySeconds;
+            if (ImGui.DragInt("seconds", ref delaySeconds, 0.1f, 0, 5))
+            {
+                Configuration.DelaySeconds = delaySeconds;
+                Configuration.Save();
+            }
         }
 
         ImGui.TextUnformatted("Autoclip Rules: ");
@@ -69,6 +83,13 @@ public class ConfigWindow : Window, IDisposable
                     ImGui.SetTooltip(rule.Description);
                 }
             }
+        }
+
+        bool autoclipChat = Configuration.LogAutoclipsToChat;
+        if (ImGui.Checkbox("Log autoclipping to chat", ref autoclipChat))
+        {
+            Configuration.LogAutoclipsToChat = autoclipChat;
+            Configuration.Save();
         }
     }
 }

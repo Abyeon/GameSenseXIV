@@ -9,6 +9,9 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
 
+    public int DelayMinutes = 0;
+    public int DelaySeconds = 30;
+
     public bool LogAutoclipsToChat = true;
     public bool ClipDeaths = false;
     public bool ClipWipes = true;
