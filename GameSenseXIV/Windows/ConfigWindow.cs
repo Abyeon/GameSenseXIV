@@ -35,14 +35,6 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        //if (ImGui.Button("Remove Game"))
-        //{
-        //    Plugin.GSClient.Post("remove_game", new
-        //    {
-        //        game = "FFXIV"
-        //    });
-        //}
-
         ImGui.TextUnformatted("Delay till next clip:");
 
         using (ImRaii.ItemWidth(25f))
@@ -62,6 +54,13 @@ public class ConfigWindow : Window, IDisposable
                 Configuration.DelaySeconds = delaySeconds;
                 Configuration.Save();
             }
+        }
+
+        bool clipAfter = Configuration.ClipAfterDelay;
+        if (ImGui.Checkbox("Clip after delay", ref clipAfter))
+        {
+            Configuration.ClipAfterDelay = clipAfter;
+            Configuration.Save();
         }
 
         ImGui.TextUnformatted("Autoclip Rules: ");

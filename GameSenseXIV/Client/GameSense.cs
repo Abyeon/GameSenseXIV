@@ -62,10 +62,10 @@ namespace GameSenseXIV.Services
             } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 // No idea if this works, just going to wait until the unlikely OSX Dalamud & SteelSeries user complains :D
-                filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SteelSeries Engine 3", "coreProps.json");
+                filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SteelSeries Engine 3", "coreProps.json");
             } else
             {
-                throw new FileNotFoundException("Not running a compatible OS!");
+                throw new PlatformNotSupportedException("Not running a compatible OS!");
             }
 
             // Get SteelSeries json
@@ -94,7 +94,8 @@ namespace GameSenseXIV.Services
                         new Clear(Plugin),
                         new Death(Plugin),
                         new Health(Plugin),
-                        new Wipe(Plugin)
+                        new Wipe(Plugin),
+                        new PvpKill(Plugin)
                     };
 
                     RegisterGameEvents();
@@ -120,6 +121,17 @@ namespace GameSenseXIV.Services
         /// </summary>
         public async void Heartbeat(object? state)
         {
+            //int minutes = Plugin.Configuration.DelayMinutes;
+            //int seconds = Plugin.Configuration.DelaySeconds;
+            //int totalDelay = (60 * minutes) + seconds;
+
+            //double secondsSinceLastClip = (DateTime.Now - lastClip).TotalSeconds;
+
+            //if (totalDelay - secondsSinceLastClip < heartbeat)
+            //{
+
+            //}
+
             var data = new { game = this.Game };
             await Post("game_heartbeat", data);
         }
@@ -196,18 +208,40 @@ namespace GameSenseXIV.Services
             await Post("register_timeline_events", timelineData);
         }
 
+        bool clipping = false;
+
         /// <summary>
         /// Triggers an Autoclip event
         /// </summary>
         /// <param name="key">The autoclip rule to trigger</param>
-        internal async void Autoclip(IAutoClipEvent rule)
+        internal async void Autoclip(IAutoClipEvent rule, bool ignoreDelay = false)
         {
-            // If it has been less than 10 seconds, dont clip.
             int minutes = Plugin.Configuration.DelayMinutes;
             int seconds = Plugin.Configuration.DelaySeconds;
+            int totalDelay = (60 * minutes) + seconds;
 
-            if ((DateTime.Now - lastClip).TotalSeconds < ((60 * minutes) + seconds))
+            double secondsSinceLastClip = (DateTime.Now - lastClip).TotalSeconds;
+
+            // If it has been less the configured delay, dont clip.
+            if (!ignoreDelay && secondsSinceLastClip < totalDelay)
             {
+                if (clipping == false && Plugin.Configuration.ClipAfterDelay)
+                {
+                    clipping = true;
+
+                    int secondsTillClip = totalDelay - (int)secondsSinceLastClip;
+
+                    Plugin.ChatGui.Print($"[GameSense] Queuing {rule.Label} for a clip in {secondsTillClip}s");
+
+                    await Task.Run(async () =>
+                    {
+                        await Task.Delay(secondsTillClip * 1000);
+                        Plugin.Log.Debug("Attempting to clip after delay");
+                        Autoclip(rule, true);
+                        clipping = false;
+                    });
+                }
+
                 lastClip = DateTime.Now;
                 return;
             }
